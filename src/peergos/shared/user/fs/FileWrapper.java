@@ -254,8 +254,21 @@ public class FileWrapper {
         });
     }
 
-    public CompletableFuture<FileWrapper> addSharingLinkTo(FileWrapper file, NetworkAccess network, SafeRandom random,
+    public CompletableFuture<FileWrapper> addReadOnlySharingLinkTo(FileWrapper file, NetworkAccess network, SafeRandom random,
                                                            Fragmenter fragmenter) {
+        return addSharingLinkTo(file, network, random, fragmenter, CapabilityStore.READ_ONLY_SHARING_FILE_PREFIX,
+                CapabilityStore.READ_CAPABILITY_SIZE, CapabilityStore.SHARING_READ_FILE_MAX_SIZE);
+    }
+
+    public CompletableFuture<FileWrapper> addEditSharingLinkTo(FileWrapper file, NetworkAccess network, SafeRandom random,
+                                                                   Fragmenter fragmenter) {
+        return addSharingLinkTo(file, network, random, fragmenter, CapabilityStore.EDIT_SHARING_FILE_PREFIX,
+                CapabilityStore.EDIT_CAPABILITY_SIZE, CapabilityStore.SHARING_EDIT_FILE_MAX_SIZE);
+    }
+
+    public CompletableFuture<FileWrapper> addSharingLinkTo(FileWrapper file, NetworkAccess network, SafeRandom random,
+                                                           Fragmenter fragmenter, String sharingPrefix,
+                                                           int capabilitySize, int sharingFileMaxSize) {
         ensureUnmodified();
         if (!this.isDirectory() || !this.isWritable()) {
             CompletableFuture<FileWrapper> error = new CompletableFuture<>();
@@ -266,25 +279,25 @@ public class FileWrapper {
         return this.getChildren(network)
             .thenCompose(children -> {
                 List<FileWrapper> capabilityCacheFiles = children.stream()
-                        .filter(f -> f.getName().startsWith(CapabilityStore.READ_ONLY_SHARING_FILE_PREFIX))
+                        .filter(f -> f.getName().startsWith(sharingPrefix))
                         .collect(Collectors.toList());
                 List<FileWrapper> sharingFiles = capabilityCacheFiles.stream()
                         .sorted(Comparator.comparingInt(f -> Integer.parseInt(f.getFileProperties().name
-                                .substring(CapabilityStore.READ_ONLY_SHARING_FILE_PREFIX.length()))))
+                                .substring(sharingPrefix.length()))))
                         .collect(Collectors.toList());
                 FileWrapper currentSharingFile = sharingFiles.isEmpty() ? null : sharingFiles.get(sharingFiles.size() - 1);
                 byte[] serializedCapability = file.pointer.capability.readOnly().toCbor().toByteArray();
-                if (serializedCapability.length != CapabilityStore.CAPABILITY_SIZE)
+                if (serializedCapability.length != capabilitySize)
                     throw new IllegalArgumentException("Unexpected Capability length:" + serializedCapability.length);
                 AsyncReader.ArrayBacked newCapability = new AsyncReader.ArrayBacked(serializedCapability);
                 if (currentSharingFile != null
-                        && currentSharingFile.getFileProperties().size + CapabilityStore.CAPABILITY_SIZE <= CapabilityStore.SHARING_FILE_MAX_SIZE) {
+                        && currentSharingFile.getFileProperties().size + capabilitySize <= sharingFileMaxSize) {
                     long size = currentSharingFile.getSize();
                     return uploadFileSection(currentSharingFile.props.name, newCapability, size, size + serializedCapability.length,
                             Optional.of(currentSharingFile.pointer.capability.baseKey), true, network, random, x -> {}, fragmenter);
                 } else {
                     int sharingFileIndex = currentSharingFile == null ? 0 : sharingFiles.size();
-                    String capStoreFilename = CapabilityStore.READ_ONLY_SHARING_FILE_PREFIX + sharingFileIndex;
+                    String capStoreFilename = sharingPrefix + sharingFileIndex;
                     return uploadFileSection(capStoreFilename, newCapability, 0, serializedCapability.length,
                             Optional.empty(), false, network, random, x -> {}, fragmenter);
                 }
