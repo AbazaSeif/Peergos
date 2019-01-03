@@ -94,7 +94,7 @@ public class MultiUserTests {
 
         // share the file from "a" to each of the others
         FileWrapper u1File = u1.getByPath(u1.username + "/" + filename).get().get();
-        u1.shareWith(Paths.get(u1.username, filename), Collections.singleton(u2.username)).get();
+        u1.shareReadAccessWith(Paths.get(u1.username, filename), Collections.singleton(u2.username)).get();
 
         // check other user can read the file
         FileWrapper sharedFile = u2.getByPath(u1.username + "/" + filename).get().get();
@@ -154,9 +154,9 @@ public class MultiUserTests {
                 u1.network, u1.crypto.random,l -> {}, u1.fragmenter()).get();
 
         // share the file from "a" to each of the others
-        u1.shareWith(Paths.get(u1.username, filename), userContexts.stream().map(u -> u.username).collect(Collectors.toSet())).get();
+        u1.shareReadAccessWith(Paths.get(u1.username, filename), userContexts.stream().map(u -> u.username).collect(Collectors.toSet())).get();
 
-        u1.shareWith(Paths.get(u1.username, "subdir", filename), userContexts.stream().map(u -> u.username).collect(Collectors.toSet())).get();
+        u1.shareReadAccessWith(Paths.get(u1.username, "subdir", filename), userContexts.stream().map(u -> u.username).collect(Collectors.toSet())).get();
 
         // check other users can read the file
         for (UserContext userContext : userContexts) {
@@ -222,7 +222,7 @@ public class MultiUserTests {
         // share the file from "a" to each of the others
         String originalPath = u1.username + "/" + filename;
         FileWrapper u1File = u1.getByPath(originalPath).get().get();
-        u1.shareWith(Paths.get(u1.username, filename), friends.stream().map(u -> u.username).collect(Collectors.toSet())).get();
+        u1.shareReadAccessWith(Paths.get(u1.username, filename), friends.stream().map(u -> u.username).collect(Collectors.toSet())).get();
 
         // check other users can read the file
         for (UserContext friend : friends) {
@@ -245,7 +245,7 @@ public class MultiUserTests {
         SymmetricKey priorMetaKey = priorFileAccess.getMetaKey(priorPointer.baseKey);
 
         // unshare with a single user
-        u1.unShare(Paths.get(u1.username, filename), userToUnshareWith.username).get();
+        u1.unShareReadAccess(Paths.get(u1.username, filename), userToUnshareWith.username).get();
 
         String newname = "newname.txt";
         FileWrapper updatedParent = u1.getByPath(originalPath).get().get()
