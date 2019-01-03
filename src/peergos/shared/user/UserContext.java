@@ -862,7 +862,7 @@ public class UserContext {
                                     .thenCompose(markedDirty -> {
                                         Set<String> existingEntries = sharedWithWriteAccessCache.getOrDefault("/" + pathString, new HashSet<>());
                                         existingEntries.removeAll(writersToRemove);
-                                        return shareReadAccessWith(path, existingEntries);
+                                        return shareWriteAccessWith(path, existingEntries);
                                     }));
         });
     }
@@ -895,6 +895,11 @@ public class UserContext {
     public CompletableFuture<Boolean> shareReadAccessWith(Path path, Set<String> readersToAdd) {
         return getByPath(path.toString())
                 .thenCompose(file -> shareReadAccessWithAll(file.orElseThrow(() -> new IllegalStateException("Could not find path " + path.toString())), readersToAdd));
+    }
+
+    public CompletableFuture<Boolean> shareWriteAccessWith(Path path, Set<String> writersToAdd) {
+        return getByPath(path.toString())
+                .thenCompose(file -> shareWriteAccessWithAll(file.orElseThrow(() -> new IllegalStateException("Could not find path " + path.toString())), writersToAdd));
     }
 
     public CompletableFuture<Boolean> shareReadAccessWithAll(FileWrapper file, Set<String> readersToAdd) {

@@ -62,7 +62,7 @@ public class PeergosNetworkUtils {
     }
 
 
-    public static void shareAndUnshareFile(NetworkAccess sharerNode, NetworkAccess shareeNode, int shareeCount, Random random) throws Exception {
+    public static void shareAndUnshareFileForReadAccess(NetworkAccess sharerNode, NetworkAccess shareeNode, int shareeCount, Random random) throws Exception {
         Assert.assertTrue(0 < shareeCount);
         //sign up a user on sharerNode
 
@@ -174,7 +174,7 @@ public class PeergosNetworkUtils {
         Assert.assertTrue(Arrays.equals(newFileContents, ArrayOps.concat(originalFileContents, suffix)));
     }
 
-    public static void shareAndUnshareFolder(NetworkAccess sharerNode, NetworkAccess shareeNode, int shareeCount, Random random) throws Exception {
+    public static void shareAndUnshareFolderForReadAccess(NetworkAccess sharerNode, NetworkAccess shareeNode, int shareeCount, Random random) throws Exception {
         Assert.assertTrue(0 < shareeCount);
 
         String sharerUsername = generateUsername(random);
@@ -274,7 +274,6 @@ public class PeergosNetworkUtils {
             }
         }
     }
-
 
     public static void publicLinkToFile(Random random, NetworkAccess writerNode, NetworkAccess readerNode) throws Exception {
         String username = generateUsername(random);

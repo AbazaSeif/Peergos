@@ -79,37 +79,42 @@ public class FriendSourcedTrieNode implements TrieNode {
                         return CompletableFuture.completedFuture(true);
                     return CapabilityStore.getReadOnlyCapabilityCount(sharedDirOpt.get(), network)
                             .thenCompose(count -> {
-                                if (count == capCountReadOnly)
-                                    return CompletableFuture.completedFuture(true);
-                                return CapabilityStore.loadReadAccessSharingLinksFromIndex(homeDirSupplier, sharedDirOpt.get(),
-                                        ownerName, network, random, fragmenter, capCountReadOnly, true)
-                                        .thenCompose(newReadCaps -> {
-                                            capCountReadOnly += newReadCaps.getRecordsRead();
-                                            root = newReadCaps.getRetrievedCapabilities().stream()
-                                                    .reduce(root,
-                                                            (root, cap) -> root.put(trimOwner(cap.path), new EntryPoint(cap.cap, ownerName)),
-                                                            (a, b) -> a);
-                                            return CapabilityStore.getEditableCapabilityCount(sharedDirOpt.get(), network)
-                                                    .thenCompose(editCount -> {
-                                                        if (editCount == capCountEdit)
-                                                            return CompletableFuture.completedFuture(true);
-                                                        //todo kev this is not correct!!!
-                                                        return CapabilityStore.loadWriteAccessSharingLinksFromIndex(homeDirSupplier, sharedDirOpt.get(),
-                                                                ownerName, network, random, fragmenter, capCountEdit, true)
-                                                                .thenApply(newWriteCaps -> {
-                                                                    capCountEdit += newWriteCaps.getRecordsRead();
-                                                                    root = newWriteCaps.getRetrievedCapabilities().stream()
-                                                                            .reduce(root,
-                                                                                    (root, cap) -> root.put(trimOwner(cap.path), new EntryPoint(cap.cap, ownerName)),
-                                                                                    (a, b) -> a);
-                                                                    return true;
-                                                                });
-                                                    });
-                                        });
+                                if (count == capCountReadOnly) {
+                                    return addEditableCapabilities(sharedDirOpt, network);
+                                } else {
+                                    return CapabilityStore.loadReadAccessSharingLinksFromIndex(homeDirSupplier, sharedDirOpt.get(),
+                                            ownerName, network, random, fragmenter, capCountReadOnly, true)
+                                            .thenCompose(newReadCaps -> {
+                                                capCountReadOnly += newReadCaps.getRecordsRead();
+                                                root = newReadCaps.getRetrievedCapabilities().stream()
+                                                        .reduce(root,
+                                                                (root, cap) -> root.put(trimOwner(cap.path), new EntryPoint(cap.cap, ownerName)),
+                                                                (a, b) -> a);
+                                                return addEditableCapabilities(sharedDirOpt, network);
+                                            });
+                                }
                             });
                 });
     }
 
+    private synchronized CompletableFuture<Boolean> addEditableCapabilities(Optional<FileWrapper> sharedDirOpt, NetworkAccess network) {
+        return CapabilityStore.getEditableCapabilityCount(sharedDirOpt.get(), network)
+                .thenCompose(editCount -> {
+                    if (editCount == capCountEdit)
+                        return CompletableFuture.completedFuture(true);
+                    //todo kev this is not correct!!!
+                    return CapabilityStore.loadWriteAccessSharingLinksFromIndex(homeDirSupplier, sharedDirOpt.get(),
+                            ownerName, network, random, fragmenter, capCountEdit, true)
+                            .thenApply(newWriteCaps -> {
+                                capCountEdit += newWriteCaps.getRecordsRead();
+                                root = newWriteCaps.getRetrievedCapabilities().stream()
+                                        .reduce(root,
+                                                (root, cap) -> root.put(trimOwner(cap.path), new EntryPoint(cap.cap, ownerName)),
+                                                (a, b) -> a);
+                                return true;
+                            });
+                });
+    }
     private CompletableFuture<Optional<FileWrapper>> getFriendRoot(NetworkAccess network) {
         return network.retrieveEntryPoint(sharedDir)
                 .thenCompose(sharedDirOpt -> {
