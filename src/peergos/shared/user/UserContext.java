@@ -853,14 +853,15 @@ public class UserContext {
 
     public CompletableFuture<Boolean> unShareWriteAccess(Path path, Set<String> writersToRemove) {
         String pathString = path.toString();
-        return getByPath(pathString).thenCompose(opt -> {
-            FileWrapper toUnshare = opt.orElseThrow(() -> new IllegalStateException("Specified un-shareWith path " + pathString + " does not exist"));
+        String absolutePathString = pathString.startsWith("/") ? pathString : "/" + pathString;
+        return getByPath(absolutePathString).thenCompose(opt -> {
+            FileWrapper toUnshare = opt.orElseThrow(() -> new IllegalStateException("Specified un-shareWith path " + absolutePathString + " does not exist"));
             // now change to new base keys, clean some keys and mark others as dirty
             return getByPath(path.getParent().toString())
                     .thenCompose(parent ->
                             toUnshare.makeDirty(network, crypto.random, parent.get())
                                     .thenCompose(markedDirty -> {
-                                        Set<String> existingEntries = sharedWithWriteAccessCache.getOrDefault("/" + pathString, new HashSet<>());
+                                        Set<String> existingEntries = sharedWithWriteAccessCache.getOrDefault(absolutePathString, new HashSet<>());
                                         existingEntries.removeAll(writersToRemove);
                                         return shareWriteAccessWith(path, existingEntries);
                                     }));
@@ -869,14 +870,15 @@ public class UserContext {
 
     public CompletableFuture<Boolean> unShareReadAccess(Path path, Set<String> readersToRemove) {
         String pathString = path.toString();
-        return getByPath(pathString).thenCompose(opt -> {
-            FileWrapper toUnshare = opt.orElseThrow(() -> new IllegalStateException("Specified un-shareWith path " + pathString + " does not exist"));
+        String absolutePathString = pathString.startsWith("/") ? pathString : "/" + pathString;
+        return getByPath(absolutePathString).thenCompose(opt -> {
+            FileWrapper toUnshare = opt.orElseThrow(() -> new IllegalStateException("Specified un-shareWith path " + absolutePathString + " does not exist"));
             // now change to new base keys, clean some keys and mark others as dirty
             return getByPath(path.getParent().toString())
                     .thenCompose(parent ->
                             toUnshare.makeDirty(network, crypto.random, parent.get())
                                     .thenCompose(markedDirty -> {
-                                        Set<String> existingEntries = sharedWithReadAccessCache.getOrDefault("/" + pathString, new HashSet<>());
+                                        Set<String> existingEntries = sharedWithReadAccessCache.getOrDefault(absolutePathString, new HashSet<>());
                                         existingEntries.removeAll(readersToRemove);
                                         return shareReadAccessWith(path, existingEntries);
                                     }));
